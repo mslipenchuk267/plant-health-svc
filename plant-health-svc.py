@@ -1,4 +1,4 @@
-import time
+from datetime import datetime
 import paho.mqtt.client as paho
 import mysql.connector
 
@@ -20,7 +20,8 @@ def on_connect(client, userdata, flags, rc):
   client.subscribe("moisture")
 
 def on_message(client, userdata, message):
-    #time.sleep(1)
+    obs_time = datetime.strptime(str(datetime.now()), '%Y-%m-%d %H:%M:%S.%f')
+
     msg = str(message.payload.decode("utf-8"))
     print("received message =", msg)
 
@@ -35,7 +36,7 @@ def on_message(client, userdata, message):
     rel_moisture_percent = split_msg[7]
 
     sql = "INSERT INTO `plant-health-db`.moisture (sensor_name, obs_time, soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
-    val = (sensor_name, time.strftime('%Y-%m-%d %H:%M:%S'), soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent)
+    val = (sensor_name, obs_time, soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent)
     mycursor.execute(sql, val)
 
     mydb.commit()
