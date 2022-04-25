@@ -26,10 +26,16 @@ def on_message(client, userdata, message):
 
     split_msg = msg.split(",")
     sensor_name = split_msg[0]
-    val = split_msg[1]
+    soil_v = split_msg[1]
+    atm_v = split_msg[2]
+    soil_v_count = split_msg[3]
+    atm_v_count = split_msg[4]
+    soil_moisture_percent = split_msg[5]
+    atm_moisture_percent = split_msg[6]
+    rel_moisture_percent = split_msg[7]
 
-    sql = "INSERT INTO `plant-health-db`.moisture (sensor_name, obs_time, val) VALUES (%s, %s, %s)"
-    val = (sensor_name, time.strftime('%Y-%m-%d %H:%M:%S'), val)
+    sql = "INSERT INTO `plant-health-db`.moisture (sensor_name, obs_time, soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    val = (sensor_name, time.strftime('%Y-%m-%d %H:%M:%S'), soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent)
     mycursor.execute(sql, val)
 
     mydb.commit()
