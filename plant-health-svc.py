@@ -24,8 +24,12 @@ def on_message(client, userdata, message):
     msg = str(message.payload.decode("utf-8"))
     print("received message =", msg)
 
+    split_msg = msg.split(",")
+    sensor_name = split_msg[0]
+    val = split_msg[1]
+
     sql = "INSERT INTO `plant-health-db`.moisture (sensor_name, obs_time, val) VALUES (%s, %s, %s)"
-    val = ("sensor_1", time.strftime('%Y-%m-%d %H:%M:%S'), msg)
+    val = (sensor_name, time.strftime('%Y-%m-%d %H:%M:%S'), val)
     mycursor.execute(sql, val)
 
     mydb.commit()
