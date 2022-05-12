@@ -15,7 +15,7 @@ ScriptVersion = "1.0"
 ModifiedDate = "Saturday 30, April 2022"
 MQTTBrokerIP = "127.0.0.1" #IP Address of your MQTT Broker
 MQTTTopicSubscribe = "#" #MQTT Topic Filter
-MQTTClientName = "sensor_1" #Used to identify the device to your MQTT Broker
+MQTTClientName = "bridge_proc" #Used to identify the device to your MQTT Broker
 AzureIOTHub_conn_str = config.adls_connection_str #Azure IOT Hub Connection String
 
 # EDIT ABOVE THIS LINE
