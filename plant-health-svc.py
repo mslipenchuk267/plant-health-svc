@@ -1,58 +1,55 @@
-import os
-import time
-import json
-import paho.mqtt.client as paho
 from datetime import datetime
-from azure.iot.device import IoTHubDeviceClient
-from azure.core.exceptions import AzureError
-from azure.storage.blob import BlobClient
+import paho.mqtt.client as paho
+import mysql.connector
+import ctypes
 
 import config
-cwd = os.getcwd()
 
-device_client = IoTHubDeviceClient.create_from_connection_string(config.adls_connection_str)
-device_client.connect()
+mydb = mysql.connector.connect(
+  host=config.mysql_host,
+  user=config.mysql_user,
+  password=config.mysql_password
+)
+
+print(mydb)
+
+mycursor = mydb.cursor()
+
+class MoistureStruct(ctypes.Structure):
+    _fields_ = (
+        ('sensor_name', ctypes.c_char_p),
+        ('soil_v', ctypes.c_double),
+        ('atm_v', ctypes.c_double),
+        ('soil_count_avg', ctypes.c_uint8),
+        ('atm_count_avg', ctypes.c_uint8),
+        ('soil_moisture_value', ctypes.c_uint8),
+        ('atm_moisture_value', ctypes.c_uint8),
+        ('relative_moisture_value', ctypes.c_uint8)
+    )
 
 #define callback
-def store_blob(blob_info, file_name, file_contents):
-    try:
-        sas_url = "https://{}/{}/{}{}".format(
-            blob_info["hostName"],
-            blob_info["containerName"],
-            blob_info["blobName"],
-            blob_info["sasToken"]
-        )
-
-        print("\nUploading file: {} to Azure Storage as blob: {} in container {}\n".format(file_name, blob_info["blobName"], blob_info["containerName"]))
-
-        # Upload the specified file
-        with BlobClient.from_blob_url(sas_url) as blob_client:
-            result = blob_client.upload_blob(file_contents, overwrite=True)
-            return (True, result)
-
-    except FileNotFoundError as ex:
-        # catch file not found and add an HTTP status code to return in notification to IoT Hub
-        ex.status_code = 404
-        return (False, ex)
-
-    except AzureError as ex:
-        # catch Azure errors that might result from the upload operation
-        return (False, ex)
-
 def on_connect(client, userdata, flags, rc):
   print("Connected with result code "+str(rc))
   client.subscribe("moisture")
 
 def on_message(client, userdata, message):
-    obs_time = datetime.strptime(str(datetime.now().astimezone()), '%Y-%m-%d %H:%M:%S.%f%z')
+    obs_time = datetime.strptime(str(datetime.now()), '%Y-%m-%d %H:%M:%S.%f')
 
     msg = str(message.payload.decode("utf-8"))
     print("received message =", msg)
 
     split_msg = msg.split(",")
+    sensor_name = split_msg[0]
+    soil_v = split_msg[1]
+    atm_v = split_msg[2]
+    soil_v_count = split_msg[3]
+    atm_v_count = split_msg[4]
+    soil_moisture_percent = split_msg[5]
+    atm_moisture_percent = split_msg[6]
+    rel_moisture_percent = split_msg[7]
+
     data = {}
     data['sensor_name'] = split_msg[0]
-    data['obs_time'] = str(obs_time) + " "
     data['soil_v'] = split_msg[1]
     data['atm_v'] = split_msg[2]
     data['soil_v_count'] = split_msg[3]
@@ -60,40 +57,20 @@ def on_message(client, userdata, message):
     data['soil_moisture_percent'] = split_msg[5]
     data['atm_moisture_percent'] = split_msg[6]
     data['rel_moisture_percent'] = split_msg[7]
-    json_data = json.dumps(data)
 
-    timestr = time.strftime("%Y%m%d-%H%M%S")
-    file_name = "moisture_" + timestr + ".json"
-    file_path = os.path.join(cwd, file_name)
+    sql = "INSERT INTO `plant-health-db`.moisture (sensor_name, obs_time, soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+    val = (sensor_name, obs_time, soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent)
+    mycursor.execute(sql, val)
 
-    blob_name = file_name
-    storage_info = device_client.get_storage_info_for_blob(blob_name)
-    # Upload to blob
-    success, result = store_blob(storage_info, file_path, json_data)
+    mydb.commit()
+    print(mycursor.rowcount, "record inserted.")
 
-    if success == True:
-        print("Upload succeeded. Result is: \n") 
-        print(result)
-        print()
-
-        device_client.notify_blob_upload_status(
-            storage_info["correlationId"], True, 200, "OK: {}".format(file_path)
-        )
-
-    else :
-        # If the upload was not successful, the result is the exception object
-        print("Upload failed. Exception is: \n") 
-        print(result)
-        print()
-
-        device_client.notify_blob_upload_status(
-            storage_info["correlationId"], False, result.status_code, str(result)
-        )
-
-client= paho.Client("client-001")
-client.connect(config.mqtt_host)
+client= paho.Client("client-002")
 client.on_connect = on_connect
 client.on_message=on_message
+print(config.mqtt_host)
+res = client.connect(config.mqtt_host, 1883, 60)
+
 
 client.loop_forever()
 
