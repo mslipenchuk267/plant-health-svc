@@ -15,11 +15,12 @@ print(mydb)
 
 mycursor = mydb.cursor()
 
-#define callback
+# define on connect event handler
 def on_connect(client, userdata, flags, rc):
   print("Connected with result code "+str(rc))
   client.subscribe("#")
 
+# define messaged received event handler
 def on_message(client, userdata, message):
     obs_time = datetime.strptime(str(datetime.now()), '%Y-%m-%d %H:%M:%S.%f')
     msg = str(message.payload.decode("utf-8"))
@@ -33,42 +34,42 @@ def on_message(client, userdata, message):
     if (topic_sensor == "moisture"):
       split_msg = msg.split(",")
       sensor_name = split_msg[0]
-      soil_v = split_msg[1]
-      atm_v = split_msg[2]
-      soil_v_count = split_msg[3]
-      atm_v_count = split_msg[4]
-      soil_moisture_percent = split_msg[5]
-      atm_moisture_percent = split_msg[6]
-      rel_moisture_percent = split_msg[7]
+      battery_v = split_msg[1]
+      soil_v = split_msg[2]
+      atm_v = split_msg[3]
+      soil_v_count = split_msg[4]
+      atm_v_count = split_msg[5]
+      soil_moisture_percent = split_msg[6]
+      atm_moisture_percent = split_msg[7]
+      rel_moisture_percent = split_msg[8]
 
       data = {}
       data['sensor_name'] = split_msg[0]
-      data['soil_v'] = split_msg[1]
-      data['atm_v'] = split_msg[2]
-      data['soil_v_count'] = split_msg[3]
-      data['atm_v_count'] = split_msg[4]
-      data['soil_moisture_percent'] = split_msg[5]
-      data['atm_moisture_percent'] = split_msg[6]
-      data['rel_moisture_percent'] = split_msg[7]
+      data['battery_v'] = split_msg[1]
+      data['soil_v'] = split_msg[2]
+      data['atm_v'] = split_msg[3]
+      data['soil_v_count'] = split_msg[4]
+      data['atm_v_count'] = split_msg[5]
+      data['soil_moisture_percent'] = split_msg[6]
+      data['atm_moisture_percent'] = split_msg[7]
+      data['rel_moisture_percent'] = split_msg[8]
 
-      sql = "INSERT INTO `plant-health-db`.moisture (sensor_name, obs_time, soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
-      val = (sensor_name, obs_time, soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent)
+      sql = "INSERT INTO `plant-health-db`.moisture (sensor_name, obs_time, battery_v, soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+      val = (sensor_name, obs_time, battery_v, soil_v, atm_v, soil_v_count, atm_v_count, soil_moisture_percent, atm_moisture_percent, rel_moisture_percent)
     
     mycursor.execute(sql, val)
     mydb.commit()
     print(mycursor.rowcount, "record inserted.")
 
-client= paho.Client("mysql_proc")
-client.on_connect = on_connect
-client.on_message=on_message
-print(config.mqtt_host)
-res = client.connect(config.mqtt_host, 1883, 60)
+def main():
+  try:
+    client= paho.Client("mysql_proc")
+    client.on_connect = on_connect
+    client.on_message=on_message
+    print(config.mqtt_host)
+    res = client.connect(config.mqtt_host, 1883, 60)
+    client.loop_forever()
+  except Exception as e:
+        return main()
 
-
-client.loop_forever()
-
-
-
-
-
-
+main()
